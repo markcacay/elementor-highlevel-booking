@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mark Cacay — Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.1.0
+ * Version: 0.1.2
  * Author: Mark Cacay
  * Requires Plugins: elementor, elementor-pro
  * Text Domain: mc-ghl-booking
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.1.0' );
+define( 'MC_GHL_BOOKING_VERSION', '0.1.2' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
@@ -119,8 +119,22 @@ function mc_ghl_booking_slots() {
 	$to   = $from + ( 30 * DAY_IN_SECONDS );
 	$url  = add_query_arg( array( 'startDate' => $from * 1000, 'endDate' => $to * 1000, 'timezone' => $timezone ), 'https://services.leadconnectorhq.com/calendars/' . rawurlencode( $calendar ) . '/free-slots' );
 	$response = wp_remote_get( $url, array( 'timeout' => 20, 'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Version' => 'v3' ) ) );
-	if ( is_wp_error( $response ) || wp_remote_retrieve_response_code( $response ) < 200 || wp_remote_retrieve_response_code( $response ) >= 300 ) {
-		wp_send_json_error( array( 'message' => 'Could not load available times. Please try again.' ), 502 );
+	if ( is_wp_error( $response ) ) {
+		$error = array( 'message' => 'Could not load available times. Please try again.' );
+		if ( current_user_can( 'manage_options' ) ) {
+			$error['debug'] = 'WordPress request error: ' . sanitize_text_field( $response->get_error_message() );
+		}
+		wp_send_json_error( $error, 502 );
+	}
+	$http_code = wp_remote_retrieve_response_code( $response );
+	if ( $http_code < 200 || $http_code >= 300 ) {
+		$error = array( 'message' => 'Could not load available times. Please try again.' );
+		if ( current_user_can( 'manage_options' ) ) {
+			$body = json_decode( wp_remote_retrieve_body( $response ), true );
+			$detail = is_array( $body ) ? ( $body['message'] ?? $body['error_description'] ?? $body['error'] ?? '' ) : '';
+			$error['debug'] = 'HighLevel HTTP ' . absint( $http_code ) . ( $detail ? ': ' . sanitize_text_field( is_string( $detail ) ? $detail : wp_json_encode( $detail ) ) : '' );
+		}
+		wp_send_json_error( $error, 502 );
 	}
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
 	wp_send_json_success( is_array( $data ) ? $data : array() );

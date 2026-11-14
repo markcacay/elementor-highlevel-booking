@@ -43,7 +43,11 @@
       try {
         const response = await fetch(mcGhlBooking.ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body });
         const result = await response.json();
-        if (!response.ok || !result.success) throw new Error(result.data && result.data.message ? result.data.message : 'Could not load appointment times.');
+        if (!response.ok || !result.success) {
+          const message = result.data && result.data.message ? result.data.message : 'Could not load appointment times.';
+          const debug = result.data && result.data.debug ? ' ' + result.data.debug : '';
+          throw new Error(message + debug);
+        }
         const availability = result.data || {};
         const entries = Object.entries(availability).flatMap(([date, value]) => (value.slots || []).map((slot) => ({ date, slot })));
         list.replaceChildren();
