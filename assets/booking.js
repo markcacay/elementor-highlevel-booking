@@ -2,16 +2,17 @@
   'use strict';
 
   function init(wrapper) {
-    if (!wrapper || wrapper.dataset.mcGhlInit) return;
+    if (!wrapper) return;
     const form = wrapper.querySelector('form.elementor-form');
     if (!form) return;
     const fields = form.querySelector('.elementor-form-fields-wrapper');
     const submit = form.querySelector('[type="submit"]');
     if (!fields || !submit) return;
-    wrapper.dataset.mcGhlInit = '1';
 
     const buttonText = submit.querySelector('.elementor-button-text');
     if (buttonText) buttonText.textContent = 'Continue';
+    if (form.dataset.mcGhlInit) return;
+    form.dataset.mcGhlInit = '1';
 
     const panel = document.createElement('section');
     panel.className = 'mc-ghl-booking-step';
