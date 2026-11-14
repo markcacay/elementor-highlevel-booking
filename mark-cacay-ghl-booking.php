@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mark Cacay — Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.1.2
+ * Version: 0.1.3
  * Author: Mark Cacay
  * Requires Plugins: elementor, elementor-pro
  * Text Domain: mc-ghl-booking
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.1.2' );
+define( 'MC_GHL_BOOKING_VERSION', '0.1.3' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
@@ -101,7 +101,7 @@ function mc_ghl_booking_slots() {
 	check_ajax_referer( 'mc_ghl_booking_slots', 'nonce' );
 	$location = isset( $_POST['locationId'] ) ? sanitize_text_field( wp_unslash( $_POST['locationId'] ) ) : '';
 	$calendar = isset( $_POST['calendarId'] ) ? sanitize_text_field( wp_unslash( $_POST['calendarId'] ) ) : '';
-	$zone     = isset( $_POST['timezone'] ) ? sanitize_text_field( wp_unslash( $_POST['timezone'] ) ) : '';
+	$zone     = isset( $_POST['zone'] ) ? sanitize_text_field( wp_unslash( $_POST['zone'] ) ) : '';
 	$signature = isset( $_POST['signature'] ) ? sanitize_text_field( wp_unslash( $_POST['signature'] ) ) : '';
 	$expected = hash_hmac( 'sha256', $location . '|' . $calendar . '|' . $zone, wp_salt( 'auth' ) );
 	if ( ! $location || ! $calendar || ! hash_equals( $expected, $signature ) || ! in_array( $zone, array( 'site', 'visitor' ), true ) && ! in_array( $zone, timezone_identifiers_list(), true ) ) {

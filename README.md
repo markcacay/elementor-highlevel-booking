@@ -1,6 +1,6 @@
 # Mark Cacay — Elementor HighLevel Booking
 
-Version 0.1.2. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents available times in an in-page second step, upserts a HighLevel contact, and creates a calendar appointment after final submit. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
+Version 0.1.3. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents available times in an in-page second step, upserts a HighLevel contact, and creates a calendar appointment after final submit. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
 
 ## Install and configure
 

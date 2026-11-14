@@ -39,7 +39,7 @@
       const zoneSetting = wrapper.dataset.mcGhlTimezone || 'site';
       const visitorZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
       const timezone = zoneSetting === 'visitor' ? visitorZone : zoneSetting;
-      const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: wrapper.dataset.mcGhlNonce || '', locationId: wrapper.dataset.mcGhlLocation || '', calendarId: wrapper.dataset.mcGhlCalendar || '', timezone, visitorTimezone: visitorZone, signature: wrapper.dataset.mcGhlSignature || '' });
+      const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: wrapper.dataset.mcGhlNonce || '', locationId: wrapper.dataset.mcGhlLocation || '', calendarId: wrapper.dataset.mcGhlCalendar || '', zone: zoneSetting, visitorTimezone: visitorZone, signature: wrapper.dataset.mcGhlSignature || '' });
       try {
         const response = await fetch(mcGhlBooking.ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body });
         const result = await response.json();
