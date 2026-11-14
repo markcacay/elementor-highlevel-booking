@@ -10,7 +10,7 @@
     if (!fields || !submit) return;
 
     const buttonText = submit.querySelector('.elementor-button-text');
-    if (buttonText) buttonText.textContent = 'Continue';
+    if (buttonText && buttonText.textContent.trim() !== 'Continue') buttonText.textContent = 'Continue';
     if (form.dataset.mcGhlInit) return;
     form.dataset.mcGhlInit = '1';
 

@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.4.1
+ * Version: 0.4.2
  * Author: Mark Cacay
  * Author URI: https://www.linkedin.com/in/mark-cacay-858a1896/
  * Requires Plugins: elementor, elementor-pro
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.4.1' );
+define( 'MC_GHL_BOOKING_VERSION', '0.4.2' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
