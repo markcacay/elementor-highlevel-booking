@@ -11,7 +11,7 @@ class MC_GHL_Booking_Action extends \ElementorPro\Modules\Forms\Classes\Action_B
 		$widget->start_controls_section( 'mc_ghl_booking_section', array( 'label' => esc_html__( 'HighLevel Booking', 'mc-ghl-booking' ), 'condition' => array( 'submit_actions' => $this->get_name() ) ) );
 		$widget->add_control( 'mc_ghl_location_id', array( 'label' => esc_html__( 'HighLevel Location ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );
 		$widget->add_control( 'mc_ghl_calendar_id', array( 'label' => esc_html__( 'Free Consultation Calendar ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );
-		$widget->add_control( 'mc_ghl_mapping_help', array( 'type' => \Elementor\Controls_Manager::RAW_HTML, 'raw' => esc_html__( 'Add one row for every form field to send. Use the Elementor Field ID as the source. For custom fields, enter either the HighLevel custom field ID or field key (for example contact.type_of_virtual_assistant). Field keys require locations/customFields.readonly token access.', 'mc-ghl-booking' ) ) );
+		$widget->add_control( 'mc_ghl_mapping_help', array( 'type' => \Elementor\Controls_Manager::RAW_HTML, 'raw' => esc_html__( 'Add one row for every form field to send. Use the Elementor Field ID as the source. For custom fields, enter either the HighLevel custom field ID or field key (for example contact.type_of_virtual_assistant). You may also enter a shortcode as the target; it runs during submission and can read submitted values. Field keys require locations/customFields.readonly token access.', 'mc-ghl-booking' ) ) );
 		$repeater = new \Elementor\Repeater();
 		$repeater->add_control( 'source_id', array( 'label' => esc_html__( 'Elementor Field ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );
 		$repeater->add_control( 'target_type', array( 'label' => esc_html__( 'HighLevel field type', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::SELECT, 'default' => 'standard', 'options' => array( 'standard' => esc_html__( 'Standard contact field', 'mc-ghl-booking' ), 'custom' => esc_html__( 'Custom field', 'mc-ghl-booking' ), 'tag' => esc_html__( 'Contact tag', 'mc-ghl-booking' ) ) ) );
@@ -50,9 +50,15 @@ class MC_GHL_Booking_Action extends \ElementorPro\Modules\Forms\Classes\Action_B
 		$tags          = array();
 		$contact = array( 'locationId' => $location, 'source' => 'Elementor HighLevel Booking' );
 		$standard_allowed = array( 'firstName', 'lastName', 'name', 'email', 'phone', 'address1', 'city', 'state', 'postalCode', 'website', 'timezone', 'country', 'companyName' );
+		$previous_submission_fields = $GLOBALS['mc_ghl_booking_submission_fields'] ?? null;
+		$GLOBALS['mc_ghl_booking_submission_fields'] = $values;
 		foreach ( (array) ( $settings['mc_ghl_field_mappings'] ?? array() ) as $mapping ) {
 			$source = sanitize_key( $mapping['source_id'] ?? '' );
-			$target = sanitize_text_field( $mapping['target_field'] ?? '' );
+			$target = (string) ( $mapping['target_field'] ?? '' );
+			if ( false !== strpos( $target, '[' ) ) {
+				$target = do_shortcode( $target );
+			}
+			$target = sanitize_text_field( $target );
 			$value  = $values[ $source ] ?? '';
 			if ( '' === $source || '' === $value ) {
 				continue;
@@ -88,6 +94,11 @@ class MC_GHL_Booking_Action extends \ElementorPro\Modules\Forms\Classes\Action_B
 			} elseif ( in_array( $target, $standard_allowed, true ) ) {
 				$contact[ $target ] = $value;
 			}
+		}
+		if ( null === $previous_submission_fields ) {
+			unset( $GLOBALS['mc_ghl_booking_submission_fields'] );
+		} else {
+			$GLOBALS['mc_ghl_booking_submission_fields'] = $previous_submission_fields;
 		}
 		if ( empty( $contact['email'] ) && empty( $contact['phone'] ) ) {
 			$ajax_handler->add_error_message( esc_html__( 'Map at least an email or phone field to HighLevel before booking.', 'mc-ghl-booking' ) );
