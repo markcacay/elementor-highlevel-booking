@@ -1,42 +1,22 @@
-# Elementor HighLevel Booking
+# Mark Cacay — Elementor HighLevel Booking
 
-A WordPress plugin that adds an in-page appointment booking step to Elementor Pro Forms and connects the form to a GoHighLevel (HighLevel) calendar.
+Version 0.1.0. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents available times in an in-page second step, upserts a HighLevel contact, and creates a calendar appointment after final submit.
 
-Created by [Mark Cacay](https://www.linkedin.com/in/mark-cacay-858a1896/).
+## Install and configure
 
-## What it does
+1. Zip the `mark-cacay-ghl-booking` folder and upload it under **Plugins → Add Plugin → Upload Plugin**. Activate Elementor and Elementor Pro first.
+2. Go to **Settings → HighLevel Booking** and save a sub-account Private Integration token. The token must have `calendars.readonly`, `calendars.events.write`, and `contacts.write` scopes. Never put the token in Elementor or browser code.
+3. In the Elementor Form widget, remove the old **Webhook** action and add **Book with HighLevel**.
+4. Enter the Location ID and Calendar ID. Select the slot timezone.
+5. Add one mapping row per submitted field. Use the Elementor field ID as the source. For a HighLevel custom field, select **Custom field** and enter its custom field ID.
+6. Set `email` or `phone` as a standard-field mapping so HighLevel can identify the contact.
 
-- Keeps the visitor on the current page while they submit their details, choose a date, and select an available time.
-- Retrieves availability from the configured HighLevel calendar and defaults to the visitor's local timezone, with a timezone selector.
-- Creates or updates the HighLevel contact, applies configured contact tags and custom fields, and books the appointment.
-- Displays the appointment duration, schedule, meeting location, and timezone after a successful booking.
-- Supports reusable Elementor form templates and shortcode-driven mapping targets.
+The plugin adds an appointment slot value under the configured slot field key during submission. You may add an Elementor Hidden field with that ID if you want the selected slot stored in Elementor submissions; the plugin can also submit its own hidden value.
 
-HighLevel credentials are stored in WordPress settings and used by the server. The availability request is limited to the configured calendar using a server-generated HMAC signature.
+## Notes
 
-## Requirements
-
-- WordPress
-- Elementor and Elementor Pro
-- A HighLevel Private Integration token with the required calendar, contact, location, and custom-field scopes
-
-## Install
-
-1. Download the source archive for the desired version from the repository's **Tags**.
-2. Upload the plugin folder under **Plugins → Add Plugin → Upload Plugin** and activate it.
-3. Save the HighLevel Private Integration token under **Settings → HighLevel Booking**. Keep the token out of page content and browser code.
-4. Add **Book with HighLevel** to the Elementor form's **Actions After Submit** and configure the location, calendar, and field mappings.
-
-See the plugin's **Settings → HighLevel Booking** help text and the release notes for mapping details.
-
-## Source layout
-
-- `mark-cacay-ghl-booking.php` — plugin bootstrap, settings, availability endpoint, and Elementor configuration.
-- `includes/class-mc-ghl-booking-action.php` — Elementor Pro Form action, contact mapping, and appointment creation.
-- `assets/booking.js` — date/time selection flow and post-booking summary.
-- `assets/booking.css` — scoped booking calendar and slot styles.
-
-## Version history
-
-Each archived release is represented by a Git commit and a version tag. The detailed change notes are in [CHANGELOG.md](CHANGELOG.md). Historical snapshots are taken from the versioned plugin ZIP files; the 0.1.1 archive's plugin header still reports 0.1.0, which is called out in the changelog.
-
+- No API token, OAuth credential, or secret is placed in front-end JavaScript.
+- The slot endpoint returns up to 30 days of availability in the chosen timezone.
+- Appointment creation uses the slot's explicit UTC timestamp and lets HighLevel apply its calendar duration.
+- If contact upsert succeeds but booking fails, the contact remains saved and the form reports that the appointment could not be booked.
+- Verify current scopes and API behavior in the HighLevel documentation for your account before production use.
