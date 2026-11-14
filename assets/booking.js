@@ -329,7 +329,7 @@
   }
 
   function scan() {
-    document.querySelectorAll('.elementor-widget-form[data-mc-ghl-calendar]').forEach(init);
+    document.querySelectorAll('[data-mc-ghl-calendar]').forEach(init);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', scan); else scan();
   if (window.jQuery) jQuery(window).on('elementor/frontend/init', scan);

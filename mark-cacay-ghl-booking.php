@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.4.2
+ * Version: 0.4.3
  * Author: Mark Cacay
  * Author URI: https://www.linkedin.com/in/mark-cacay-858a1896/
  * Requires Plugins: elementor, elementor-pro
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.4.2' );
+define( 'MC_GHL_BOOKING_VERSION', '0.4.3' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
@@ -67,24 +67,31 @@ function mc_ghl_booking_register_action( $registrar ) {
 }
 
 function mc_ghl_booking_add_widget_config( $widget ) {
-	if ( 'form' !== $widget->get_name() ) {
-		return;
-	}
 	$settings = $widget->get_settings_for_display();
-	$actions  = isset( $settings['submit_actions'] ) ? (array) $settings['submit_actions'] : array();
-	if ( ! in_array( 'mc_ghl_booking', $actions, true ) ) {
+	if ( 'form' === $widget->get_name() ) {
+		$config = mc_ghl_booking_config_from_form_settings( $settings );
+	} elseif ( 'global' === $widget->get_name() ) {
+		$config = mc_ghl_booking_config_from_form_settings( $settings );
+		if ( ! $config ) {
+			$template_id = absint( $widget->get_data( 'templateID' ) );
+			$config      = $template_id ? mc_ghl_booking_config_from_global_template( $template_id ) : false;
+		}
+	} else {
 		return;
 	}
-	$location = isset( $settings['mc_ghl_location_id'] ) ? sanitize_text_field( $settings['mc_ghl_location_id'] ) : '';
-	$calendar = isset( $settings['mc_ghl_calendar_id'] ) ? sanitize_text_field( $settings['mc_ghl_calendar_id'] ) : '';
+	if ( ! $config ) {
+		return;
+	}
+	$location = $config['location'];
+	$calendar = $config['calendar'];
 	$zone     = 'visitor';
-	$slot_id  = isset( $settings['mc_ghl_slot_field_id'] ) ? sanitize_key( $settings['mc_ghl_slot_field_id'] ) : 'ghl_slot';
-	$duration = isset( $settings['mc_ghl_meeting_duration'] ) ? absint( $settings['mc_ghl_meeting_duration'] ) : 30;
-	$meeting_location = isset( $settings['mc_ghl_meeting_location'] ) ? sanitize_text_field( $settings['mc_ghl_meeting_location'] ) : '{{location.phone}}';
-	$nonce    = wp_create_nonce( 'mc_ghl_booking_slots' );
+	$slot_id  = $config['slot_id'];
+	$duration = $config['duration'];
+	$meeting_location = $config['meeting_location'];
+	$nonce     = wp_create_nonce( 'mc_ghl_booking_slots' );
 	$signature = hash_hmac( 'sha256', $location . '|' . $calendar . '|' . $zone, wp_salt( 'auth' ) );
-	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-location', $location );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-calendar', $calendar );
+	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-location', $location );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-timezone', $zone );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-site-timezone', wp_timezone_string() );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-slot-field', $slot_id );
@@ -92,6 +99,61 @@ function mc_ghl_booking_add_widget_config( $widget ) {
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-meeting-location', $meeting_location );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-signature', $signature );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-nonce', $nonce );
+}
+
+function mc_ghl_booking_config_from_form_settings( $settings ) {
+	$actions = isset( $settings['submit_actions'] ) ? (array) $settings['submit_actions'] : array();
+	if ( ! in_array( 'mc_ghl_booking', $actions, true ) ) {
+		return false;
+	}
+	$location = isset( $settings['mc_ghl_location_id'] ) ? sanitize_text_field( $settings['mc_ghl_location_id'] ) : '';
+	$calendar = isset( $settings['mc_ghl_calendar_id'] ) ? sanitize_text_field( $settings['mc_ghl_calendar_id'] ) : '';
+	$slot_id  = isset( $settings['mc_ghl_slot_field_id'] ) ? sanitize_key( $settings['mc_ghl_slot_field_id'] ) : 'ghl_slot';
+	$duration = isset( $settings['mc_ghl_meeting_duration'] ) ? absint( $settings['mc_ghl_meeting_duration'] ) : 30;
+	$meeting_location = isset( $settings['mc_ghl_meeting_location'] ) ? sanitize_text_field( $settings['mc_ghl_meeting_location'] ) : '{{location.phone}}';
+	if ( '' === $location || '' === $calendar ) {
+		return false;
+	}
+	return array(
+		'location'         => $location,
+		'calendar'         => $calendar,
+		'slot_id'          => $slot_id,
+		'duration'         => $duration,
+		'meeting_location' => $meeting_location,
+	);
+}
+
+function mc_ghl_booking_config_from_global_template( $template_id ) {
+	$raw_data = get_post_meta( $template_id, '_elementor_data', true );
+	if ( is_string( $raw_data ) ) {
+		$elements = json_decode( $raw_data, true );
+	} else {
+		$elements = $raw_data;
+	}
+	if ( ! is_array( $elements ) ) {
+		return false;
+	}
+	$find_form = function ( $nodes ) use ( &$find_form ) {
+		foreach ( (array) $nodes as $node ) {
+			if ( ! is_array( $node ) ) {
+				continue;
+			}
+			if ( 'widget' === ( $node['elType'] ?? '' ) && 'form' === ( $node['widgetType'] ?? '' ) ) {
+				$config = mc_ghl_booking_config_from_form_settings( (array) ( $node['settings'] ?? array() ) );
+				if ( $config ) {
+					return $config;
+				}
+			}
+			if ( ! empty( $node['elements'] ) ) {
+				$config = $find_form( $node['elements'] );
+				if ( $config ) {
+					return $config;
+				}
+			}
+		}
+		return false;
+	};
+	return $find_form( $elements );
 }
 
 function mc_ghl_booking_enqueue_assets() {

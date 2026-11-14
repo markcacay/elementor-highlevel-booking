@@ -1,6 +1,6 @@
 # Elementor HighLevel Booking
 
-Version 0.4.2. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. After a successful booking, Elementor displays its configured success message followed by an appointment summary with duration, schedule, meeting location, and timezone. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
+Version 0.4.3. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. It supports the Elementor Global widget containing a configured form. After a successful booking, Elementor displays its configured success message followed by an appointment summary with duration, schedule, meeting location, and timezone. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
 
 ## Install and configure
 
@@ -8,7 +8,7 @@ Version 0.4.2. Adds the **Book with HighLevel** action to Elementor Pro Forms. I
 2. Go to **Settings → HighLevel Booking** and save a sub-account Private Integration token. The token should have `calendars.readonly`, `calendars/events.write`, `contacts.write`, `locations.readonly`, and `locations/customFields.readonly` scopes. `locations.readonly` lets the plugin display the HighLevel location phone for `{{location.phone}}`; `locations/customFields.readonly` lets it resolve custom field keys to IDs. Never put the token in Elementor or browser code.
 3. In the Elementor Form widget, remove the old **Webhook** action and add **Book with HighLevel**.
 4. Enter the Location ID and Calendar ID. Visitors see availability in their detected local timezone by default and can switch timezone in the booking calendar.
-5. Add one mapping row per submitted field. Use the Elementor field ID as the source. For a HighLevel custom field, select **Custom field** and enter either its custom field ID or key (for example `contact.type_of_virtual_assistant`).
+5. Add one mapping row per submitted field. Use the Elementor field ID as the source. For a HighLevel custom field, select **Custom field** and enter either its custom field ID or key (for example `contact.type_of_virtual_assistant`). To add a contact tag from a form field, select **Contact tag**; the submitted field value is added as the tag. Multiple tags can be separated by commas, semicolons, or line breaks. Existing tags are preserved.
 6. Set `email` or `phone` as a standard-field mapping so HighLevel can identify the contact.
 7. Set the meeting duration in minutes and the meeting location shown on the confirmation. Enter `{{location.phone}}` to fetch the location's phone from HighLevel, or enter a fixed label/number such as `Phone call` or `(866) 596-9041`.
 
