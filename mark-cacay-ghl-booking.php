@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.4.6
+ * Version: 0.4.7
  * Author: Mark Cacay
  * Author URI: https://www.linkedin.com/in/mark-cacay-858a1896/
  * Requires Plugins: elementor, elementor-pro
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.4.6' );
+define( 'MC_GHL_BOOKING_VERSION', '0.4.7' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
@@ -89,7 +89,6 @@ function mc_ghl_booking_add_widget_config( $widget ) {
 	$slot_id  = $config['slot_id'];
 	$duration = $config['duration'];
 	$meeting_location = $config['meeting_location'];
-	$nonce     = wp_create_nonce( 'mc_ghl_booking_slots' );
 	$signature = hash_hmac( 'sha256', $location . '|' . $calendar . '|' . $zone, wp_salt( 'auth' ) );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-calendar', $calendar );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-location', $location );
@@ -99,7 +98,6 @@ function mc_ghl_booking_add_widget_config( $widget ) {
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-duration', max( 1, $duration ) );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-meeting-location', $meeting_location );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-signature', $signature );
-	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-nonce', $nonce );
 }
 
 function mc_ghl_booking_config_from_form_settings( $settings ) {
@@ -176,7 +174,6 @@ function mc_ghl_booking_add_form_content_config( $content, $widget ) {
 		'data-mc-ghl-duration'         => max( 1, $config['duration'] ),
 		'data-mc-ghl-meeting-location' => $config['meeting_location'],
 		'data-mc-ghl-signature'        => $signature,
-		'data-mc-ghl-nonce'            => wp_create_nonce( 'mc_ghl_booking_slots' ),
 	);
 	$markup = '';
 	foreach ( $attributes as $name => $value ) {
@@ -195,7 +192,9 @@ function mc_ghl_booking_enqueue_assets() {
 }
 
 function mc_ghl_booking_slots() {
-	check_ajax_referer( 'mc_ghl_booking_slots', 'nonce' );
+	// Public, read-only availability lookup. The server-signed location/calendar
+	// signature below limits this endpoint to the configuration rendered by WP.
+	// Avoid a page nonce here because full-page caches can serve expired nonces.
 	$location = isset( $_POST['locationId'] ) ? sanitize_text_field( wp_unslash( $_POST['locationId'] ) ) : '';
 	$calendar = isset( $_POST['calendarId'] ) ? sanitize_text_field( wp_unslash( $_POST['calendarId'] ) ) : '';
 	$zone     = isset( $_POST['zone'] ) ? sanitize_text_field( wp_unslash( $_POST['zone'] ) ) : '';

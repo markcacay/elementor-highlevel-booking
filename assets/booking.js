@@ -259,7 +259,7 @@
       const visitorZone = timezoneSelect.value || displayTimezone || 'UTC';
       displayTimezone = visitorZone;
       timezoneInput.value = visitorZone;
-      const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: configValue('mcGhlNonce'), locationId: configValue('mcGhlLocation'), calendarId: configValue('mcGhlCalendar'), zone: 'visitor', requestedTimezone: visitorZone, signature: configValue('mcGhlSignature') });
+      const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', locationId: configValue('mcGhlLocation'), calendarId: configValue('mcGhlCalendar'), zone: 'visitor', requestedTimezone: visitorZone, signature: configValue('mcGhlSignature') });
       body.set('meetingLocation', configValue('mcGhlMeetingLocation'));
       body.set('fallbackDuration', configValue('mcGhlDuration') || '30');
       try {
