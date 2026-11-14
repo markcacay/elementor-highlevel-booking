@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Mark Cacay — Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.1.3
+ * Version: 0.2.0
  * Author: Mark Cacay
  * Requires Plugins: elementor, elementor-pro
  * Text Domain: mc-ghl-booking
@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.1.3' );
+define( 'MC_GHL_BOOKING_VERSION', '0.2.0' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
@@ -83,6 +83,7 @@ function mc_ghl_booking_add_widget_config( $widget ) {
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-location', $location );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-calendar', $calendar );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-timezone', $zone );
+	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-site-timezone', wp_timezone_string() );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-slot-field', $slot_id );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-signature', $signature );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-nonce', $nonce );
@@ -112,7 +113,7 @@ function mc_ghl_booking_slots() {
 		wp_send_json_error( array( 'message' => 'Booking is not configured yet.' ), 503 );
 	}
 	$timezone = 'site' === $zone ? wp_timezone_string() : ( 'visitor' === $zone ? sanitize_text_field( wp_unslash( $_POST['visitorTimezone'] ?? '' ) ) : $zone );
-	if ( ! in_array( $timezone, timezone_identifiers_list(), true ) && ! preg_match( '/^[+-](?:0\d|1[0-4]):[0-5]\d$/', $timezone ) ) {
+	if ( ! in_array( $timezone, timezone_identifiers_list(), true ) ) {
 		$timezone = 'UTC';
 	}
 	$from = time();
@@ -137,7 +138,7 @@ function mc_ghl_booking_slots() {
 		wp_send_json_error( $error, 502 );
 	}
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
-	wp_send_json_success( is_array( $data ) ? $data : array() );
+	wp_send_json_success( array( 'slots' => is_array( $data ) ? $data : array(), 'timezone' => $timezone ) );
 }
 
 function mc_ghl_booking_api_request( $method, $path, $body = null ) {

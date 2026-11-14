@@ -1,6 +1,6 @@
 # Mark Cacay — Elementor HighLevel Booking
 
-Version 0.1.3. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents available times in an in-page second step, upserts a HighLevel contact, and creates a calendar appointment after final submit. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
+Version 0.2.0. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. After a successful booking, Elementor displays its configured success message. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
 
 ## Install and configure
 
@@ -11,7 +11,7 @@ Version 0.1.3. Adds the **Book with HighLevel** action to Elementor Pro Forms. I
 5. Add one mapping row per submitted field. Use the Elementor field ID as the source. For a HighLevel custom field, select **Custom field** and enter its custom field ID.
 6. Set `email` or `phone` as a standard-field mapping so HighLevel can identify the contact.
 
-The plugin adds an appointment slot value under the configured slot field key during submission. You may add an Elementor Hidden field with that ID if you want the selected slot stored in Elementor submissions; the plugin can also submit its own hidden value.
+The plugin adds an appointment slot value under the configured slot field key during submission. You may add an Elementor Hidden field with that ID if you want the selected slot stored in Elementor submissions; the plugin supplies its own hidden value automatically.
 
 ## Notes
 
