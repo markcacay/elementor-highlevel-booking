@@ -75,6 +75,7 @@
     let monthIndex = 0;
     let selectedSlot = '';
     let selectedDate = '';
+    let meetingDetails = { duration: Number(wrapper.dataset.mcGhlDuration || 30), location: wrapper.dataset.mcGhlMeetingLocation || '' };
 
     function showForm(clearSelection) {
       stage = 'form';
@@ -179,9 +180,49 @@
 
     function timezoneLabel(zone) {
       try {
-        const offset = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'longOffset' }).formatToParts(new Date()).find((part) => part.type === 'timeZoneName')?.value || 'GMT';
-        return offset + ' ' + zone.replaceAll('_', ' ');
+        const rawOffset = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'longOffset' }).formatToParts(new Date()).find((part) => part.type === 'timeZoneName')?.value || 'GMT';
+        const match = rawOffset.match(/GMT([+-])(\d{2}):?(\d{2})?/);
+        const offset = match ? 'GMT' + match[1] + String(Number(match[2])) + (match[3] && Number(match[3]) ? ':' + match[3] : '') : 'GMT';
+        return zone.replaceAll('_', ' ') + ' (' + offset + ')';
       } catch (_) { return zone.replaceAll('_', ' '); }
+    }
+
+    function addMeetingSummary() {
+      const card = document.createElement('section');
+      card.className = 'mc-ghl-meeting-summary';
+      card.setAttribute('aria-label', 'Appointment details');
+      const start = new Date(selectedSlot);
+      const end = new Date(start.getTime() + Number(meetingDetails.duration || 30) * 60000);
+      const clock = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: displayTimezone });
+      const date = new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: displayTimezone });
+      const schedule = clock.format(start) + ' – ' + clock.format(end) + ', ' + date.format(start);
+      const rows = [
+        ['◷', (meetingDetails.duration || 30) + ' min'],
+        ['▢', schedule],
+        ['♧', meetingDetails.location || ''],
+        ['◎', timezoneLabel(displayTimezone)]
+      ].filter((row) => row[1]);
+      rows.forEach(([icon, text]) => {
+        const row = document.createElement('div');
+        row.className = 'mc-ghl-meeting-summary-row';
+        const mark = document.createElement('span');
+        mark.className = 'mc-ghl-meeting-summary-icon';
+        mark.setAttribute('aria-hidden', 'true');
+        const svg = {
+          '◷': '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+          '▢': '<rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4m8-4v4M4 10h16"/>',
+          '♧': '<path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/>',
+          '◎': '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18m0-18a15 15 0 0 0 0 18"/>'
+        }[icon];
+        mark.innerHTML = '<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">' + svg + '</svg>';
+        const value = document.createElement('span');
+        value.textContent = text;
+        row.append(mark, value);
+        card.appendChild(row);
+      });
+      const success = wrapper.querySelector('.elementor-message-success');
+      if (success) success.insertAdjacentElement('afterend', card);
+      else form.insertAdjacentElement('afterend', card);
     }
 
     function populateTimezones() {
@@ -215,6 +256,8 @@
       displayTimezone = visitorZone;
       timezoneInput.value = visitorZone;
       const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: wrapper.dataset.mcGhlNonce || '', locationId: wrapper.dataset.mcGhlLocation || '', calendarId: wrapper.dataset.mcGhlCalendar || '', zone: 'visitor', requestedTimezone: visitorZone, signature: wrapper.dataset.mcGhlSignature || '' });
+      body.set('meetingLocation', wrapper.dataset.mcGhlMeetingLocation || '');
+      body.set('fallbackDuration', wrapper.dataset.mcGhlDuration || '30');
       try {
         const response = await fetch(mcGhlBooking.ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body });
         const result = await response.json();
@@ -226,6 +269,8 @@
         }
         const availability = result.data && result.data.slots ? result.data.slots : {};
         displayTimezone = result.data && result.data.timezone ? result.data.timezone : visitorZone;
+        meetingDetails = result.data && result.data.meeting ? result.data.meeting : meetingDetails;
+        if (!meetingDetails.duration) meetingDetails.duration = Number(wrapper.dataset.mcGhlDuration || 30);
         slotsByDate = {};
         dates = Object.keys(availability).sort();
         Object.entries(availability).forEach(([date, value]) => { slotsByDate[date] = value.slots || []; });
@@ -270,6 +315,7 @@
         if (event.target !== form) return;
         stage = 'done';
         panel.hidden = true;
+        addMeetingSummary();
       });
       jQuery(form).on('submit_error', function () {
         if (stage !== 'submitting') return;

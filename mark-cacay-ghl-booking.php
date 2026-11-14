@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.3.1
+ * Version: 0.4.0
  * Author: Mark Cacay
  * Author URI: https://www.linkedin.com/in/mark-cacay-858a1896/
  * Requires Plugins: elementor, elementor-pro
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.3.1' );
+define( 'MC_GHL_BOOKING_VERSION', '0.4.0' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
@@ -50,7 +50,7 @@ function mc_ghl_booking_settings_page() {
 			<table class="form-table"><tr>
 				<th scope="row"><label for="mc_ghl_booking_token"><?php esc_html_e( 'Private Integration token', 'mc-ghl-booking' ); ?></label></th>
 				<td><input type="password" id="mc_ghl_booking_token" name="mc_ghl_booking_token" value="" class="regular-text" autocomplete="new-password" placeholder="<?php echo esc_attr( get_option( 'mc_ghl_booking_token' ) ? 'Token saved — leave blank to keep it' : 'Paste token' ); ?>" />
-				<p class="description"><?php esc_html_e( 'Use a sub-account Private Integration with calendars.readonly, calendars.events.write, and contacts.write access.', 'mc-ghl-booking' ); ?></p></td>
+				<p class="description"><?php esc_html_e( 'Use a sub-account Private Integration with calendars.readonly, calendars.events.write, contacts.write, locations.readonly, and locations/customFields.readonly access. The last two read-only scopes are used for the meeting location phone and resolving custom field keys.', 'mc-ghl-booking' ); ?></p></td>
 			</tr></table>
 			<?php submit_button(); ?>
 		</form>
@@ -79,6 +79,8 @@ function mc_ghl_booking_add_widget_config( $widget ) {
 	$calendar = isset( $settings['mc_ghl_calendar_id'] ) ? sanitize_text_field( $settings['mc_ghl_calendar_id'] ) : '';
 	$zone     = 'visitor';
 	$slot_id  = isset( $settings['mc_ghl_slot_field_id'] ) ? sanitize_key( $settings['mc_ghl_slot_field_id'] ) : 'ghl_slot';
+	$duration = isset( $settings['mc_ghl_meeting_duration'] ) ? absint( $settings['mc_ghl_meeting_duration'] ) : 30;
+	$meeting_location = isset( $settings['mc_ghl_meeting_location'] ) ? sanitize_text_field( $settings['mc_ghl_meeting_location'] ) : '{{location.phone}}';
 	$nonce    = wp_create_nonce( 'mc_ghl_booking_slots' );
 	$signature = hash_hmac( 'sha256', $location . '|' . $calendar . '|' . $zone, wp_salt( 'auth' ) );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-location', $location );
@@ -86,6 +88,8 @@ function mc_ghl_booking_add_widget_config( $widget ) {
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-timezone', $zone );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-site-timezone', wp_timezone_string() );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-slot-field', $slot_id );
+	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-duration', max( 1, $duration ) );
+	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-meeting-location', $meeting_location );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-signature', $signature );
 	$widget->add_render_attribute( '_wrapper', 'data-mc-ghl-nonce', $nonce );
 }
@@ -141,7 +145,41 @@ function mc_ghl_booking_slots() {
 		wp_send_json_error( $error, 502 );
 	}
 	$data = json_decode( wp_remote_retrieve_body( $response ), true );
-	wp_send_json_success( array( 'slots' => is_array( $data ) ? $data : array(), 'timezone' => $timezone ) );
+	$fallback_duration = isset( $_POST['fallbackDuration'] ) ? min( 1440, max( 1, absint( $_POST['fallbackDuration'] ) ) ) : 30;
+	$details = array( 'duration' => $fallback_duration, 'location' => '' );
+	$calendar_data = get_transient( 'mc_ghl_calendar_' . md5( $calendar ) );
+	if ( false === $calendar_data ) {
+		$calendar_data = mc_ghl_booking_api_request( 'GET', '/calendars/' . rawurlencode( $calendar ) );
+		if ( ! is_wp_error( $calendar_data ) ) {
+			set_transient( 'mc_ghl_calendar_' . md5( $calendar ), $calendar_data, HOUR_IN_SECONDS );
+		}
+	}
+	$calendar_info = is_array( $calendar_data ) ? ( $calendar_data['calendar'] ?? $calendar_data ) : array();
+	if ( ! empty( $calendar_info['slotDuration'] ) ) {
+		$details['duration'] = absint( $calendar_info['slotDuration'] ) * ( 'hours' === ( $calendar_info['slotDurationUnit'] ?? 'mins' ) ? 60 : 1 );
+	} elseif ( ! empty( $calendar_info['durationOptions'] ) && is_array( $calendar_info['durationOptions'] ) ) {
+		foreach ( $calendar_info['durationOptions'] as $option ) {
+			if ( ! empty( $option['default'] ) ) {
+				$details['duration'] = absint( $option['duration'] ?? $fallback_duration ) * ( 'hours' === ( $option['unit'] ?? 'mins' ) ? 60 : 1 );
+				break;
+			}
+		}
+	}
+	$requested_location = sanitize_text_field( wp_unslash( $_POST['meetingLocation'] ?? '' ) );
+	if ( '{{location.phone}}' === strtolower( $requested_location ) ) {
+		$location_data = get_transient( 'mc_ghl_location_' . md5( $location ) );
+		if ( false === $location_data ) {
+			$location_data = mc_ghl_booking_api_request( 'GET', '/locations/' . rawurlencode( $location ) );
+			if ( ! is_wp_error( $location_data ) ) {
+				set_transient( 'mc_ghl_location_' . md5( $location ), $location_data, HOUR_IN_SECONDS );
+			}
+		}
+		$location_info = is_array( $location_data ) ? ( $location_data['location'] ?? $location_data ) : array();
+		$details['location'] = sanitize_text_field( $location_info['phone'] ?? '' );
+	} else {
+		$details['location'] = $requested_location;
+	}
+	wp_send_json_success( array( 'slots' => is_array( $data ) ? $data : array(), 'timezone' => $timezone, 'meeting' => $details ) );
 }
 
 function mc_ghl_booking_api_request( $method, $path, $body = null ) {

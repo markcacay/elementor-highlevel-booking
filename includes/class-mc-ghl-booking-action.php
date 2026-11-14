@@ -11,14 +11,16 @@ class MC_GHL_Booking_Action extends \ElementorPro\Modules\Forms\Classes\Action_B
 		$widget->start_controls_section( 'mc_ghl_booking_section', array( 'label' => esc_html__( 'HighLevel Booking', 'mc-ghl-booking' ), 'condition' => array( 'submit_actions' => $this->get_name() ) ) );
 		$widget->add_control( 'mc_ghl_location_id', array( 'label' => esc_html__( 'HighLevel Location ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );
 		$widget->add_control( 'mc_ghl_calendar_id', array( 'label' => esc_html__( 'Free Consultation Calendar ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );
-		$widget->add_control( 'mc_ghl_mapping_help', array( 'type' => \Elementor\Controls_Manager::RAW_HTML, 'raw' => esc_html__( 'Add one row for every form field to send. Use the Elementor Field ID as the source. For custom fields, enter the HighLevel custom field ID.', 'mc-ghl-booking' ) ) );
+		$widget->add_control( 'mc_ghl_mapping_help', array( 'type' => \Elementor\Controls_Manager::RAW_HTML, 'raw' => esc_html__( 'Add one row for every form field to send. Use the Elementor Field ID as the source. For custom fields, enter either the HighLevel custom field ID or field key (for example contact.type_of_virtual_assistant). Field keys require locations/customFields.readonly token access.', 'mc-ghl-booking' ) ) );
 		$repeater = new \Elementor\Repeater();
 		$repeater->add_control( 'source_id', array( 'label' => esc_html__( 'Elementor Field ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );
 		$repeater->add_control( 'target_type', array( 'label' => esc_html__( 'HighLevel field type', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::SELECT, 'default' => 'standard', 'options' => array( 'standard' => esc_html__( 'Standard contact field', 'mc-ghl-booking' ), 'custom' => esc_html__( 'Custom field', 'mc-ghl-booking' ) ) ) );
-		$repeater->add_control( 'target_field', array( 'label' => esc_html__( 'HighLevel field name or custom field ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true, 'description' => 'Examples: email, phone, firstName, or a custom field ID.' ) );
+		$repeater->add_control( 'target_field', array( 'label' => esc_html__( 'HighLevel field name, custom field ID, or key', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true, 'description' => 'Examples: email, phone, firstName, a custom field ID, or contact.type_of_virtual_assistant.' ) );
 		$widget->add_control( 'mc_ghl_field_mappings', array( 'label' => esc_html__( 'Field mappings', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::REPEATER, 'fields' => $repeater->get_controls(), 'title_field' => '{{{ source_id }}} → {{{ target_field }}}', 'default' => array() ) );
 		$widget->add_control( 'mc_ghl_slot_field_id', array( 'label' => esc_html__( 'Appointment slot field ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'default' => 'ghl_slot', 'description' => esc_html__( 'The plugin supplies this hidden value automatically. Add an Elementor Hidden field with this ID only if you also want it in saved form submissions.', 'mc-ghl-booking' ) ) );
 		$widget->add_control( 'mc_ghl_appointment_title', array( 'label' => esc_html__( 'Appointment title', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'default' => 'Free Consultation' ) );
+		$widget->add_control( 'mc_ghl_meeting_duration', array( 'label' => esc_html__( 'Meeting duration (minutes)', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::NUMBER, 'default' => 30, 'min' => 1, 'max' => 1440 ) );
+		$widget->add_control( 'mc_ghl_meeting_location', array( 'label' => esc_html__( 'Meeting location shown after booking', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'default' => '{{location.phone}}', 'label_block' => true, 'description' => 'Use a phone number or text, or {{location.phone}} to show the HighLevel location phone. The latter needs locations.readonly token access.' ) );
 		$widget->end_controls_section();
 	}
 
@@ -55,7 +57,24 @@ class MC_GHL_Booking_Action extends \ElementorPro\Modules\Forms\Classes\Action_B
 				continue;
 			}
 			if ( 'custom' === ( $mapping['target_type'] ?? '' ) ) {
-				$custom_fields[] = array( 'id' => $target, 'fieldValue' => $value );
+				if ( preg_match( '/^[A-Za-z0-9]{20,}$/', $target ) ) {
+					$custom_fields[] = array( 'id' => $target, 'fieldValue' => $value );
+				} else {
+					$field_cache_key = 'mc_ghl_field_' . md5( $location . '|' . $target );
+					$field_details = get_transient( $field_cache_key );
+					if ( false === $field_details ) {
+						$field_details = mc_ghl_booking_api_request( 'GET', '/locations/' . rawurlencode( $location ) . '/customFields/' . rawurlencode( $target ) );
+						if ( ! is_wp_error( $field_details ) ) {
+							set_transient( $field_cache_key, $field_details, DAY_IN_SECONDS );
+						}
+					}
+					$field = is_array( $field_details ) ? ( $field_details['customField'] ?? array() ) : array();
+					if ( empty( $field['id'] ) ) {
+						$ajax_handler->add_error_message( esc_html__( 'A mapped HighLevel custom field key could not be found. Check the key and ensure the token has locations/customFields.readonly access.', 'mc-ghl-booking' ) );
+						return;
+					}
+					$custom_fields[] = array( 'id' => $field['id'], 'key' => $field['fieldKey'] ?? $target, 'fieldValue' => $value );
+				}
 			} elseif ( in_array( $target, $standard_allowed, true ) ) {
 				$contact[ $target ] = $value;
 			}
