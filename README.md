@@ -1,24 +1,42 @@
 # Elementor HighLevel Booking
 
-Version 0.4.7. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. It supports Elementor Global widgets by attaching its booking configuration to the rendered form itself. The calendar and slot styles are scoped and reinforced so theme button and grid rules do not distort the booking interface. After a successful booking, Elementor displays its configured success message followed by an appointment summary with duration, schedule, meeting location, and timezone. Mapping targets can use shortcodes evaluated at submission time with submitted form values available to the shortcode. The public availability lookup uses a signed calendar configuration rather than a page nonce, so cached pages do not fail after a nonce expires. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
+A WordPress plugin that adds an in-page appointment booking step to Elementor Pro Forms and connects the form to a GoHighLevel (HighLevel) calendar.
 
-## Install and configure
+Created by [Mark Cacay](https://www.linkedin.com/in/mark-cacay-858a1896/).
 
-1. Zip the `mark-cacay-ghl-booking` folder and upload it under **Plugins → Add Plugin → Upload Plugin**. Activate Elementor and Elementor Pro first.
-2. Go to **Settings → HighLevel Booking** and save a sub-account Private Integration token. The token should have `calendars.readonly`, `calendars/events.write`, `contacts.write`, `locations.readonly`, and `locations/customFields.readonly` scopes. `locations.readonly` lets the plugin display the HighLevel location phone for `{{location.phone}}`; `locations/customFields.readonly` lets it resolve custom field keys to IDs. Never put the token in Elementor or browser code.
-3. In the Elementor Form widget, remove the old **Webhook** action and add **Book with HighLevel**.
-4. Enter the Location ID and Calendar ID. Visitors see availability in their detected local timezone by default and can switch timezone in the booking calendar.
-5. Add one mapping row per submitted field. Use the Elementor field ID as the source. For a HighLevel custom field, select **Custom field** and enter either its custom field ID or key (for example `contact.type_of_virtual_assistant`). To add a contact tag from a form field, select **Contact tag**; the submitted field value is added as the tag. Multiple tags can be separated by commas, semicolons, or line breaks. Existing tags are preserved.
-6. Set `email` or `phone` as a standard-field mapping so HighLevel can identify the contact.
-7. Set the meeting duration in minutes and the meeting location shown on the confirmation. Enter `{{location.phone}}` to fetch the location's phone from HighLevel, or enter a fixed label/number such as `Phone call` or `(866) 596-9041`.
+## What it does
 
-The plugin adds an appointment slot value under the configured slot field key during submission. You may add an Elementor Hidden field with that ID if you want the selected slot stored in Elementor submissions; the plugin supplies its own hidden value automatically.
+- Keeps the visitor on the current page while they submit their details, choose a date, and select an available time.
+- Retrieves availability from the configured HighLevel calendar and defaults to the visitor's local timezone, with a timezone selector.
+- Creates or updates the HighLevel contact, applies configured contact tags and custom fields, and books the appointment.
+- Displays the appointment duration, schedule, meeting location, and timezone after a successful booking.
+- Supports reusable Elementor form templates and shortcode-driven mapping targets.
 
-## Notes
+HighLevel credentials are stored in WordPress settings and used by the server. The availability request is limited to the configured calendar using a server-generated HMAC signature.
 
-- No API token, OAuth credential, or secret is placed in front-end JavaScript.
-- The slot endpoint returns availability starting at midnight tomorrow in the visitor-selected timezone, through the next 30 days. Same-day appointments are excluded in the interface and rejected by the server. Set the HighLevel calendar minimum scheduling notice to 0 if you want tomorrow’s slots to appear; its normal working hours, booked slots, and calendar rules still apply.
-- Appointment creation uses the slot's explicit UTC timestamp and lets HighLevel apply its calendar duration.
-- The confirmation duration uses the HighLevel calendar duration when returned by its API; otherwise, it uses the Elementor action's **Meeting duration (minutes)** value. Keep that value aligned with the actual calendar duration.
-- If contact upsert succeeds but booking fails, the contact remains saved and the form reports that the appointment could not be booked.
-- Verify current scopes and API behavior in the HighLevel documentation for your account before production use.
+## Requirements
+
+- WordPress
+- Elementor and Elementor Pro
+- A HighLevel Private Integration token with the required calendar, contact, location, and custom-field scopes
+
+## Install
+
+1. Open the [commit history](https://github.com/markcacay/elementor-highlevel-booking/commits/main) and select the `release: vX.Y.Z` commit for the version you want.
+2. Upload the plugin folder under **Plugins → Add Plugin → Upload Plugin** and activate it.
+3. Save the HighLevel Private Integration token under **Settings → HighLevel Booking**. Keep the token out of page content and browser code.
+4. Add **Book with HighLevel** to the Elementor form's **Actions After Submit** and configure the location, calendar, and field mappings.
+
+See the plugin's **Settings → HighLevel Booking** help text and the release notes for mapping details.
+
+## Source layout
+
+- `mark-cacay-ghl-booking.php` — plugin bootstrap, settings, availability endpoint, and Elementor configuration.
+- `includes/class-mc-ghl-booking-action.php` — Elementor Pro Form action, contact mapping, and appointment creation.
+- `assets/booking.js` — date/time selection flow and post-booking summary.
+- `assets/booking.css` — scoped booking calendar and slot styles.
+
+## Version history
+
+Each archived release is represented by a version-specific commit in Git history. The detailed change notes are in [CHANGELOG.md](CHANGELOG.md). Historical snapshots are taken from the versioned plugin ZIP files; the 0.1.1 archive's plugin header still reports 0.1.0, which is called out in the changelog.
+
