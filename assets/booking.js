@@ -1,10 +1,13 @@
 (function () {
   'use strict';
 
-  function init(wrapper) {
-    if (!wrapper) return;
-    const form = wrapper.querySelector('form.elementor-form');
+  function init(configNode) {
+    if (!configNode) return;
+    const isForm = configNode.matches && configNode.matches('form.elementor-form');
+    const form = isForm ? configNode : configNode.querySelector('form.elementor-form');
     if (!form) return;
+    const wrapper = isForm ? (form.closest('.elementor-widget-global') || form.closest('.elementor-widget-form') || form.parentElement) : configNode;
+    const configValue = (key) => configNode.dataset[key] || wrapper.dataset[key] || '';
     const fields = form.querySelector('.elementor-form-fields-wrapper');
     const submit = form.querySelector('[type="submit"]');
     if (!fields || !submit) return;
@@ -40,7 +43,7 @@
     ].join('');
     fields.appendChild(panel);
 
-    const slotId = wrapper.dataset.mcGhlSlotField || 'ghl_slot';
+    const slotId = configValue('mcGhlSlotField') || 'ghl_slot';
     let slotInput = Array.from(form.elements).find((element) => element.name === 'form_fields[' + slotId + ']');
     if (!slotInput) {
       slotInput = document.createElement('input');
@@ -76,7 +79,7 @@
     let monthIndex = 0;
     let selectedSlot = '';
     let selectedDate = '';
-    let meetingDetails = { duration: Number(wrapper.dataset.mcGhlDuration || 30), location: wrapper.dataset.mcGhlMeetingLocation || '' };
+    let meetingDetails = { duration: Number(configValue('mcGhlDuration') || 30), location: configValue('mcGhlMeetingLocation') || '' };
 
     function showForm(clearSelection) {
       stage = 'form';
@@ -256,9 +259,9 @@
       const visitorZone = timezoneSelect.value || displayTimezone || 'UTC';
       displayTimezone = visitorZone;
       timezoneInput.value = visitorZone;
-      const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: wrapper.dataset.mcGhlNonce || '', locationId: wrapper.dataset.mcGhlLocation || '', calendarId: wrapper.dataset.mcGhlCalendar || '', zone: 'visitor', requestedTimezone: visitorZone, signature: wrapper.dataset.mcGhlSignature || '' });
-      body.set('meetingLocation', wrapper.dataset.mcGhlMeetingLocation || '');
-      body.set('fallbackDuration', wrapper.dataset.mcGhlDuration || '30');
+      const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: configValue('mcGhlNonce'), locationId: configValue('mcGhlLocation'), calendarId: configValue('mcGhlCalendar'), zone: 'visitor', requestedTimezone: visitorZone, signature: configValue('mcGhlSignature') });
+      body.set('meetingLocation', configValue('mcGhlMeetingLocation'));
+      body.set('fallbackDuration', configValue('mcGhlDuration') || '30');
       try {
         const response = await fetch(mcGhlBooking.ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body });
         const result = await response.json();
@@ -271,7 +274,7 @@
         const availability = result.data && result.data.slots ? result.data.slots : {};
         displayTimezone = result.data && result.data.timezone ? result.data.timezone : visitorZone;
         meetingDetails = result.data && result.data.meeting ? result.data.meeting : meetingDetails;
-        if (!meetingDetails.duration) meetingDetails.duration = Number(wrapper.dataset.mcGhlDuration || 30);
+        if (!meetingDetails.duration) meetingDetails.duration = Number(configValue('mcGhlDuration') || 30);
         slotsByDate = {};
         dates = Object.keys(availability).sort();
         Object.entries(availability).forEach(([date, value]) => { slotsByDate[date] = value.slots || []; });

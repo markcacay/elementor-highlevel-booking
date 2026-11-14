@@ -1,6 +1,6 @@
 # Elementor HighLevel Booking
 
-Version 0.4.3. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. It supports the Elementor Global widget containing a configured form. After a successful booking, Elementor displays its configured success message followed by an appointment summary with duration, schedule, meeting location, and timezone. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
+Version 0.4.4. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. It supports Elementor Global widgets by attaching its booking configuration to the rendered form itself. After a successful booking, Elementor displays its configured success message followed by an appointment summary with duration, schedule, meeting location, and timezone. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
 
 ## Install and configure
 

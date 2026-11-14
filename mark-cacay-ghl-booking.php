@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.4.3
+ * Version: 0.4.4
  * Author: Mark Cacay
  * Author URI: https://www.linkedin.com/in/mark-cacay-858a1896/
  * Requires Plugins: elementor, elementor-pro
@@ -13,13 +13,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.4.3' );
+define( 'MC_GHL_BOOKING_VERSION', '0.4.4' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
 add_action( 'admin_init', 'mc_ghl_booking_register_settings' );
 add_action( 'elementor_pro/forms/actions/register', 'mc_ghl_booking_register_action' );
 add_action( 'elementor/frontend/widget/before_render', 'mc_ghl_booking_add_widget_config' );
+add_filter( 'elementor/widget/render_content', 'mc_ghl_booking_add_form_content_config', 10, 2 );
 add_action( 'elementor/frontend/after_enqueue_scripts', 'mc_ghl_booking_enqueue_assets' );
 add_action( 'wp_ajax_mc_ghl_booking_slots', 'mc_ghl_booking_slots' );
 add_action( 'wp_ajax_nopriv_mc_ghl_booking_slots', 'mc_ghl_booking_slots' );
@@ -154,6 +155,34 @@ function mc_ghl_booking_config_from_global_template( $template_id ) {
 		return false;
 	};
 	return $find_form( $elements );
+}
+
+function mc_ghl_booking_add_form_content_config( $content, $widget ) {
+	if ( ! is_object( $widget ) || 'form' !== $widget->get_name() || false !== strpos( $content, 'data-mc-ghl-calendar=' ) ) {
+		return $content;
+	}
+	$config = mc_ghl_booking_config_from_form_settings( $widget->get_settings_for_display() );
+	if ( ! $config ) {
+		return $content;
+	}
+	$zone      = 'visitor';
+	$signature = hash_hmac( 'sha256', $config['location'] . '|' . $config['calendar'] . '|' . $zone, wp_salt( 'auth' ) );
+	$attributes = array(
+		'data-mc-ghl-calendar'         => $config['calendar'],
+		'data-mc-ghl-location'         => $config['location'],
+		'data-mc-ghl-timezone'         => $zone,
+		'data-mc-ghl-site-timezone'    => wp_timezone_string(),
+		'data-mc-ghl-slot-field'       => $config['slot_id'],
+		'data-mc-ghl-duration'         => max( 1, $config['duration'] ),
+		'data-mc-ghl-meeting-location' => $config['meeting_location'],
+		'data-mc-ghl-signature'        => $signature,
+		'data-mc-ghl-nonce'            => wp_create_nonce( 'mc_ghl_booking_slots' ),
+	);
+	$markup = '';
+	foreach ( $attributes as $name => $value ) {
+		$markup .= ' ' . $name . '="' . esc_attr( $value ) . '"';
+	}
+	return preg_replace( '/<form\\b/i', '<form' . $markup, $content, 1 );
 }
 
 function mc_ghl_booking_enqueue_assets() {
