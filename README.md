@@ -1,4 +1,3 @@
-/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted
 # Elementor HighLevel Booking
 
 A WordPress plugin that adds an in-page appointment booking step to Elementor Pro Forms and connects the form to a GoHighLevel (HighLevel) calendar.
