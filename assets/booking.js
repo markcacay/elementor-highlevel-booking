@@ -47,6 +47,13 @@
       slotInput.name = 'form_fields[' + slotId + ']';
       form.appendChild(slotInput);
     }
+    let timezoneInput = Array.from(form.elements).find((element) => element.name === 'form_fields[mc_ghl_booking_timezone]');
+    if (!timezoneInput) {
+      timezoneInput = document.createElement('input');
+      timezoneInput.type = 'hidden';
+      timezoneInput.name = 'form_fields[mc_ghl_booking_timezone]';
+      form.appendChild(timezoneInput);
+    }
 
     const calendarView = panel.querySelector('.mc-ghl-calendar-view');
     const timeView = panel.querySelector('.mc-ghl-time-view');
@@ -206,6 +213,7 @@
       status.textContent = 'Loading available dates…';
       const visitorZone = timezoneSelect.value || displayTimezone || 'UTC';
       displayTimezone = visitorZone;
+      timezoneInput.value = visitorZone;
       const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: wrapper.dataset.mcGhlNonce || '', locationId: wrapper.dataset.mcGhlLocation || '', calendarId: wrapper.dataset.mcGhlCalendar || '', zone: 'visitor', requestedTimezone: visitorZone, signature: wrapper.dataset.mcGhlSignature || '' });
       try {
         const response = await fetch(mcGhlBooking.ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body });
@@ -255,6 +263,7 @@
       loadSlots();
     });
     populateTimezones();
+    timezoneInput.value = displayTimezone;
 
     if (window.jQuery) {
       jQuery(document).on('submit_success', function (event) {

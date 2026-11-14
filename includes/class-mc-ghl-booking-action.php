@@ -28,12 +28,14 @@ class MC_GHL_Booking_Action extends \ElementorPro\Modules\Forms\Classes\Action_B
 		$calendar = sanitize_text_field( $settings['mc_ghl_calendar_id'] ?? '' );
 		$slot_id  = sanitize_key( $settings['mc_ghl_slot_field_id'] ?? 'ghl_slot' );
 		$slot     = isset( $_POST['form_fields'][ $slot_id ] ) ? sanitize_text_field( wp_unslash( $_POST['form_fields'][ $slot_id ] ) ) : '';
-		if ( ! $location || ! $calendar || ! $slot ) {
+		$booking_timezone = isset( $_POST['form_fields']['mc_ghl_booking_timezone'] ) ? sanitize_text_field( wp_unslash( $_POST['form_fields']['mc_ghl_booking_timezone'] ) ) : '';
+		if ( ! $location || ! $calendar || ! $slot || ! in_array( $booking_timezone, timezone_identifiers_list(), true ) ) {
 			$ajax_handler->add_error_message( esc_html__( 'Please select an available appointment time.', 'mc-ghl-booking' ) );
 			return;
 		}
 		$start = strtotime( $slot );
-		if ( ! $start || $start < time() ) {
+		$tomorrow_start = ( new DateTimeImmutable( 'tomorrow', new DateTimeZone( $booking_timezone ) ) )->getTimestamp();
+		if ( ! $start || $start < $tomorrow_start ) {
 			$ajax_handler->add_error_message( esc_html__( 'That appointment time is no longer available. Please select another time.', 'mc-ghl-booking' ) );
 			return;
 		}

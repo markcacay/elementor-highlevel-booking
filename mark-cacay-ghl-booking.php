@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.3.0
+ * Version: 0.3.1
  * Author: Mark Cacay
  * Author URI: https://www.linkedin.com/in/mark-cacay-858a1896/
  * Requires Plugins: elementor, elementor-pro
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.3.0' );
+define( 'MC_GHL_BOOKING_VERSION', '0.3.1' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
@@ -117,7 +117,9 @@ function mc_ghl_booking_slots() {
 	if ( ! in_array( $timezone, timezone_identifiers_list(), true ) ) {
 		wp_send_json_error( array( 'message' => 'Invalid timezone selection.' ), 400 );
 	}
-	$from = time();
+	$timezone_object = new DateTimeZone( $timezone );
+	$tomorrow_start  = new DateTimeImmutable( 'tomorrow', $timezone_object );
+	$from = $tomorrow_start->getTimestamp();
 	$to   = $from + ( 30 * DAY_IN_SECONDS );
 	$url  = add_query_arg( array( 'startDate' => $from * 1000, 'endDate' => $to * 1000, 'timezone' => $timezone ), 'https://services.leadconnectorhq.com/calendars/' . rawurlencode( $calendar ) . '/free-slots' );
 	$response = wp_remote_get( $url, array( 'timeout' => 20, 'headers' => array( 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Version' => 'v3' ) ) );

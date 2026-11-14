@@ -1,6 +1,6 @@
 # Elementor HighLevel Booking
 
-Version 0.3.0. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. After a successful booking, Elementor displays its configured success message. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
+Version 0.3.1. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. After a successful booking, Elementor displays its configured success message. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
 
 ## Install and configure
 
@@ -16,7 +16,7 @@ The plugin adds an appointment slot value under the configured slot field key du
 ## Notes
 
 - No API token, OAuth credential, or secret is placed in front-end JavaScript.
-- The slot endpoint returns up to 30 days of availability in the chosen timezone.
+- The slot endpoint returns availability starting at midnight tomorrow in the visitor-selected timezone, through the next 30 days. Same-day appointments are excluded in the interface and rejected by the server. Set the HighLevel calendar minimum scheduling notice to 0 if you want tomorrow’s slots to appear; its normal working hours, booked slots, and calendar rules still apply.
 - Appointment creation uses the slot's explicit UTC timestamp and lets HighLevel apply its calendar duration.
 - If contact upsert succeeds but booking fails, the contact remains saved and the form reports that the appointment could not be booked.
 - Verify current scopes and API behavior in the HighLevel documentation for your account before production use.
