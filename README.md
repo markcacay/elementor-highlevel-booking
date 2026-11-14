@@ -5,7 +5,7 @@ Version 0.1.0. Adds the **Book with HighLevel** action to Elementor Pro Forms. I
 ## Install and configure
 
 1. Zip the `mark-cacay-ghl-booking` folder and upload it under **Plugins → Add Plugin → Upload Plugin**. Activate Elementor and Elementor Pro first.
-2. Go to **Settings → HighLevel Booking** and save a sub-account Private Integration token. The token must have `calendars.readonly`, `calendars.events.write`, and `contacts.write` scopes. Never put the token in Elementor or browser code.
+2. Go to **Settings → HighLevel Booking** and save a sub-account Private Integration token. The token must have `calendars.readonly`, `calendars/events.write`, and `contacts.write` scopes. Never put the token in Elementor or browser code.
 3. In the Elementor Form widget, remove the old **Webhook** action and add **Book with HighLevel**.
 4. Enter the Location ID and Calendar ID. Select the slot timezone.
 5. Add one mapping row per submitted field. Use the Elementor field ID as the source. For a HighLevel custom field, select **Custom field** and enter its custom field ID.
