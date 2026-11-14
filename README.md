@@ -1,13 +1,13 @@
-# Mark Cacay — Elementor HighLevel Booking
+# Elementor HighLevel Booking
 
-Version 0.2.0. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. After a successful booking, Elementor displays its configured success message. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
+Version 0.3.0. Adds the **Book with HighLevel** action to Elementor Pro Forms. It presents a separate calendar date view, time selection, and confirmation action without reloading the page. After a successful booking, Elementor displays its configured success message. When a WordPress administrator is logged in, slot-loading errors include a diagnostic detail; public visitors continue to see a generic message.
 
 ## Install and configure
 
 1. Zip the `mark-cacay-ghl-booking` folder and upload it under **Plugins → Add Plugin → Upload Plugin**. Activate Elementor and Elementor Pro first.
 2. Go to **Settings → HighLevel Booking** and save a sub-account Private Integration token. The token must have `calendars.readonly`, `calendars/events.write`, and `contacts.write` scopes. Never put the token in Elementor or browser code.
 3. In the Elementor Form widget, remove the old **Webhook** action and add **Book with HighLevel**.
-4. Enter the Location ID and Calendar ID. Select the slot timezone.
+4. Enter the Location ID and Calendar ID. Visitors see availability in their detected local timezone by default and can switch timezone in the booking calendar.
 5. Add one mapping row per submitted field. Use the Elementor field ID as the source. For a HighLevel custom field, select **Custom field** and enter its custom field ID.
 6. Set `email` or `phone` as a standard-field mapping so HighLevel can identify the contact.
 

@@ -11,7 +11,6 @@ class MC_GHL_Booking_Action extends \ElementorPro\Modules\Forms\Classes\Action_B
 		$widget->start_controls_section( 'mc_ghl_booking_section', array( 'label' => esc_html__( 'HighLevel Booking', 'mc-ghl-booking' ), 'condition' => array( 'submit_actions' => $this->get_name() ) ) );
 		$widget->add_control( 'mc_ghl_location_id', array( 'label' => esc_html__( 'HighLevel Location ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );
 		$widget->add_control( 'mc_ghl_calendar_id', array( 'label' => esc_html__( 'Free Consultation Calendar ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );
-		$widget->add_control( 'mc_ghl_timezone', array( 'label' => esc_html__( 'Slot display timezone', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::SELECT, 'default' => 'site', 'options' => array( 'site' => esc_html__( 'WordPress site timezone', 'mc-ghl-booking' ), 'visitor' => esc_html__( 'Visitor local timezone', 'mc-ghl-booking' ), 'UTC' => 'UTC' ) ) );
 		$widget->add_control( 'mc_ghl_mapping_help', array( 'type' => \Elementor\Controls_Manager::RAW_HTML, 'raw' => esc_html__( 'Add one row for every form field to send. Use the Elementor Field ID as the source. For custom fields, enter the HighLevel custom field ID.', 'mc-ghl-booking' ) ) );
 		$repeater = new \Elementor\Repeater();
 		$repeater->add_control( 'source_id', array( 'label' => esc_html__( 'Elementor Field ID', 'mc-ghl-booking' ), 'type' => \Elementor\Controls_Manager::TEXT, 'label_block' => true ) );

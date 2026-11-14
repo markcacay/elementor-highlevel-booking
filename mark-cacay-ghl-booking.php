@@ -1,9 +1,10 @@
 <?php
 /**
- * Plugin Name: Mark Cacay — Elementor HighLevel Booking
+ * Plugin Name: Elementor HighLevel Booking
  * Description: Adds an AJAX appointment step and a HighLevel booking action to Elementor Pro Forms.
- * Version: 0.2.0
+ * Version: 0.3.0
  * Author: Mark Cacay
+ * Author URI: https://www.linkedin.com/in/mark-cacay-858a1896/
  * Requires Plugins: elementor, elementor-pro
  * Text Domain: mc-ghl-booking
  */
@@ -12,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'MC_GHL_BOOKING_VERSION', '0.2.0' );
+define( 'MC_GHL_BOOKING_VERSION', '0.3.0' );
 define( 'MC_GHL_BOOKING_FILE', __FILE__ );
 
 add_action( 'admin_menu', 'mc_ghl_booking_add_settings_page' );
@@ -76,7 +77,7 @@ function mc_ghl_booking_add_widget_config( $widget ) {
 	}
 	$location = isset( $settings['mc_ghl_location_id'] ) ? sanitize_text_field( $settings['mc_ghl_location_id'] ) : '';
 	$calendar = isset( $settings['mc_ghl_calendar_id'] ) ? sanitize_text_field( $settings['mc_ghl_calendar_id'] ) : '';
-	$zone     = isset( $settings['mc_ghl_timezone'] ) ? sanitize_text_field( $settings['mc_ghl_timezone'] ) : 'site';
+	$zone     = 'visitor';
 	$slot_id  = isset( $settings['mc_ghl_slot_field_id'] ) ? sanitize_key( $settings['mc_ghl_slot_field_id'] ) : 'ghl_slot';
 	$nonce    = wp_create_nonce( 'mc_ghl_booking_slots' );
 	$signature = hash_hmac( 'sha256', $location . '|' . $calendar . '|' . $zone, wp_salt( 'auth' ) );
@@ -95,7 +96,7 @@ function mc_ghl_booking_enqueue_assets() {
 	}
 	wp_enqueue_style( 'mc-ghl-booking', plugins_url( 'assets/booking.css', __FILE__ ), array(), MC_GHL_BOOKING_VERSION );
 	wp_enqueue_script( 'mc-ghl-booking', plugins_url( 'assets/booking.js', __FILE__ ), array(), MC_GHL_BOOKING_VERSION, true );
-	wp_localize_script( 'mc-ghl-booking', 'mcGhlBooking', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ) ) );
+	wp_localize_script( 'mc-ghl-booking', 'mcGhlBooking', array( 'ajaxUrl' => admin_url( 'admin-ajax.php' ), 'timezones' => timezone_identifiers_list() ) );
 }
 
 function mc_ghl_booking_slots() {
@@ -105,16 +106,16 @@ function mc_ghl_booking_slots() {
 	$zone     = isset( $_POST['zone'] ) ? sanitize_text_field( wp_unslash( $_POST['zone'] ) ) : '';
 	$signature = isset( $_POST['signature'] ) ? sanitize_text_field( wp_unslash( $_POST['signature'] ) ) : '';
 	$expected = hash_hmac( 'sha256', $location . '|' . $calendar . '|' . $zone, wp_salt( 'auth' ) );
-	if ( ! $location || ! $calendar || ! hash_equals( $expected, $signature ) || ! in_array( $zone, array( 'site', 'visitor' ), true ) && ! in_array( $zone, timezone_identifiers_list(), true ) ) {
+	if ( ! $location || ! $calendar || ! hash_equals( $expected, $signature ) || 'visitor' !== $zone ) {
 		wp_send_json_error( array( 'message' => 'Invalid booking configuration.' ), 400 );
 	}
 	$token = get_option( 'mc_ghl_booking_token', '' );
 	if ( ! $token ) {
 		wp_send_json_error( array( 'message' => 'Booking is not configured yet.' ), 503 );
 	}
-	$timezone = 'site' === $zone ? wp_timezone_string() : ( 'visitor' === $zone ? sanitize_text_field( wp_unslash( $_POST['visitorTimezone'] ?? '' ) ) : $zone );
+	$timezone = sanitize_text_field( wp_unslash( $_POST['requestedTimezone'] ?? '' ) );
 	if ( ! in_array( $timezone, timezone_identifiers_list(), true ) ) {
-		$timezone = 'UTC';
+		wp_send_json_error( array( 'message' => 'Invalid timezone selection.' ), 400 );
 	}
 	$from = time();
 	$to   = $from + ( 30 * DAY_IN_SECONDS );

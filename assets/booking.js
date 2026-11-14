@@ -17,11 +17,12 @@
     panel.className = 'mc-ghl-booking-step';
     panel.hidden = true;
     panel.innerHTML = [
+      '<label class="mc-ghl-timezone-picker">Time zone <select class="mc-ghl-timezone-select" aria-label="Time zone"></select></label>',
       '<div class="mc-ghl-calendar-view">',
       '<h3>Choose an appointment date</h3>',
       '<p class="mc-ghl-status" aria-live="polite">Loading available dates…</p>',
       '<div class="mc-ghl-calendar">',
-      '<div class="mc-ghl-calendar-heading"><button type="button" class="mc-ghl-month-prev" aria-label="Previous month">‹</button><strong class="mc-ghl-month-label"></strong><button type="button" class="mc-ghl-month-next" aria-label="Next month">›</button></div>',
+      '<div class="mc-ghl-calendar-heading"><button type="button" class="mc-ghl-month-prev" aria-label="Previous month"></button><strong class="mc-ghl-month-label"></strong><button type="button" class="mc-ghl-month-next" aria-label="Next month"></button></div>',
       '<div class="mc-ghl-weekdays" aria-hidden="true"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>',
       '<div class="mc-ghl-calendar-days"></div>',
       '</div>',
@@ -32,7 +33,7 @@
       '<p class="mc-ghl-date-label"></p>',
       '<p class="mc-ghl-timezone-label"></p>',
       '<div class="mc-ghl-slot-list"></div>',
-      '<div class="mc-ghl-time-actions"><button type="button" class="mc-ghl-back-to-calendar">Back to dates</button><button type="button" class="mc-ghl-confirm" hidden>Confirm</button></div>',
+      '<div class="mc-ghl-time-actions"><button type="button" class="mc-ghl-back-to-calendar">Back to dates</button></div>',
       '</div>',
       '<p class="mc-ghl-submitting" aria-live="polite" hidden>Confirming your appointment…</p>'
     ].join('');
@@ -53,12 +54,14 @@
     const dayGrid = panel.querySelector('.mc-ghl-calendar-days');
     const monthLabel = panel.querySelector('.mc-ghl-month-label');
     const slotList = panel.querySelector('.mc-ghl-slot-list');
-    const confirmButton = panel.querySelector('.mc-ghl-confirm');
+    let confirmButton = null;
+    const timezoneSelect = panel.querySelector('.mc-ghl-timezone-select');
     const submitting = panel.querySelector('.mc-ghl-submitting');
     const originalChildren = Array.from(fields.children).filter((element) => element !== panel);
     let stage = 'form';
     let started = false;
-    let displayTimezone = 'UTC';
+    let displayTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+    let requestSequence = 0;
     let slotsByDate = {};
     let dates = [];
     let months = [];
@@ -100,7 +103,7 @@
       const [year, monthNumber] = month.split('-').map(Number);
       const firstWeekday = new Date(year, monthNumber - 1, 1).getDay();
       const daysInMonth = new Date(year, monthNumber, 0).getDate();
-      monthLabel.textContent = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric' }).format(new Date(year, monthNumber - 1, 1));
+      monthLabel.textContent = new Intl.DateTimeFormat(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(year, monthNumber - 1, 1, 12)));
       panel.querySelector('.mc-ghl-month-prev').disabled = monthIndex === 0;
       panel.querySelector('.mc-ghl-month-next').disabled = monthIndex === months.length - 1;
       dayGrid.replaceChildren();
@@ -132,62 +135,100 @@
       calendarView.hidden = true;
       timeView.hidden = false;
       submitting.hidden = true;
-      confirmButton.hidden = true;
-      confirmButton.disabled = false;
       slotList.replaceChildren();
       const parts = dateParts(dateString);
-      panel.querySelector('.mc-ghl-date-label').textContent = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).format(new Date(parts.year, parts.month, parts.day));
-      panel.querySelector('.mc-ghl-timezone-label').textContent = 'Time zone: ' + displayTimezone.replaceAll('_', ' ');
+      panel.querySelector('.mc-ghl-date-label').textContent = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' }).format(new Date(Date.UTC(parts.year, parts.month, parts.day, 12)));
+      panel.querySelector('.mc-ghl-timezone-label').textContent = 'Time zone: ' + timezoneLabel(displayTimezone);
       (slotsByDate[dateString] || []).forEach((slot) => {
+        const row = document.createElement('div');
+        row.className = 'mc-ghl-slot-row';
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'mc-ghl-slot';
         button.textContent = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: displayTimezone }).format(new Date(slot));
+        const confirm = document.createElement('button');
+        confirm.type = 'button';
+        confirm.className = 'mc-ghl-confirm';
+        confirm.textContent = 'Confirm';
+        confirm.hidden = true;
+        confirm.addEventListener('click', submitBooking);
         button.addEventListener('click', () => {
           selectedSlot = slot;
-          slotList.querySelectorAll('.mc-ghl-slot').forEach((item) => item.setAttribute('aria-pressed', 'false'));
+          slotList.querySelectorAll('.mc-ghl-slot-row').forEach((item) => {
+            item.classList.remove('is-selected');
+            item.querySelector('.mc-ghl-slot').setAttribute('aria-pressed', 'false');
+            item.querySelector('.mc-ghl-confirm').hidden = true;
+          });
+          row.classList.add('is-selected');
           button.setAttribute('aria-pressed', 'true');
-          confirmButton.hidden = false;
+          confirm.hidden = false;
+          confirmButton = confirm;
         });
-        slotList.appendChild(button);
+        row.append(button, confirm);
+        slotList.appendChild(row);
       });
       panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
+    function timezoneLabel(zone) {
+      try {
+        const offset = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'longOffset' }).formatToParts(new Date()).find((part) => part.type === 'timeZoneName')?.value || 'GMT';
+        return offset + ' ' + zone.replaceAll('_', ' ');
+      } catch (_) { return zone.replaceAll('_', ' '); }
+    }
+
+    function populateTimezones() {
+      const zones = Array.isArray(mcGhlBooking.timezones) ? mcGhlBooking.timezones : ['UTC'];
+      zones.forEach((zone) => {
+        const option = document.createElement('option');
+        option.value = zone;
+        option.textContent = timezoneLabel(zone);
+        timezoneSelect.appendChild(option);
+      });
+      if (!zones.includes(displayTimezone)) displayTimezone = 'UTC';
+      timezoneSelect.value = displayTimezone;
+    }
+
+    function submitBooking() {
+      if (!selectedSlot || !confirmButton) return;
+      slotInput.value = selectedSlot;
+      stage = 'submitting';
+      calendarView.hidden = true;
+      timeView.hidden = true;
+      submitting.hidden = false;
+      confirmButton.disabled = true;
+      if (typeof form.requestSubmit === 'function') form.requestSubmit(submit);
+      else submit.click();
+    }
+
     async function loadSlots() {
-      if (started) return;
-      started = true;
+      const request = ++requestSequence;
       status.textContent = 'Loading available dates…';
-      const zoneSetting = wrapper.dataset.mcGhlTimezone || 'site';
-      const visitorZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-      displayTimezone = zoneSetting === 'visitor' ? visitorZone : (zoneSetting === 'site' ? wrapper.dataset.mcGhlSiteTimezone || 'UTC' : zoneSetting);
-      const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: wrapper.dataset.mcGhlNonce || '', locationId: wrapper.dataset.mcGhlLocation || '', calendarId: wrapper.dataset.mcGhlCalendar || '', zone: zoneSetting, visitorTimezone: visitorZone, signature: wrapper.dataset.mcGhlSignature || '' });
+      const visitorZone = timezoneSelect.value || displayTimezone || 'UTC';
+      displayTimezone = visitorZone;
+      const body = new URLSearchParams({ action: 'mc_ghl_booking_slots', nonce: wrapper.dataset.mcGhlNonce || '', locationId: wrapper.dataset.mcGhlLocation || '', calendarId: wrapper.dataset.mcGhlCalendar || '', zone: 'visitor', requestedTimezone: visitorZone, signature: wrapper.dataset.mcGhlSignature || '' });
       try {
         const response = await fetch(mcGhlBooking.ajaxUrl, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' }, body });
         const result = await response.json();
+        if (request !== requestSequence) return;
         if (!response.ok || !result.success) {
           const message = result.data && result.data.message ? result.data.message : 'Could not load appointment times.';
           const debug = result.data && result.data.debug ? ' ' + result.data.debug : '';
           throw new Error(message + debug);
         }
         const availability = result.data && result.data.slots ? result.data.slots : {};
-        displayTimezone = result.data && result.data.timezone ? result.data.timezone : displayTimezone;
+        displayTimezone = result.data && result.data.timezone ? result.data.timezone : visitorZone;
         slotsByDate = {};
         dates = Object.keys(availability).sort();
         Object.entries(availability).forEach(([date, value]) => { slotsByDate[date] = value.slots || []; });
         months = Array.from(new Set(dates.map((date) => date.slice(0, 7))));
         const hasSlots = Object.values(slotsByDate).some((slots) => slots.length > 0);
-        if (!hasSlots) {
-          status.textContent = 'There are no available times in the next 30 days. Please contact us.';
-          started = false;
-          return;
-        }
-        status.textContent = 'Select a date with available times. Time zone: ' + displayTimezone.replaceAll('_', ' ') + '.';
+        if (!hasSlots) { status.textContent = 'There are no available times in the next 30 days. Please contact us.'; return; }
+        status.textContent = 'Select a date with available times.';
         monthIndex = 0;
         renderCalendar();
       } catch (error) {
-        status.textContent = error.message;
-        started = false;
+        if (request === requestSequence) status.textContent = error.message;
       }
     }
 
@@ -208,17 +249,12 @@
     panel.querySelector('.mc-ghl-month-next').addEventListener('click', () => { if (monthIndex < months.length - 1) { monthIndex += 1; renderCalendar(); } });
     panel.querySelector('.mc-ghl-back-to-form').addEventListener('click', () => showForm(true));
     panel.querySelector('.mc-ghl-back-to-calendar').addEventListener('click', showCalendar);
-    confirmButton.addEventListener('click', () => {
-      if (!selectedSlot) return;
-      slotInput.value = selectedSlot;
-      stage = 'submitting';
-      calendarView.hidden = true;
-      timeView.hidden = true;
-      submitting.hidden = false;
-      confirmButton.disabled = true;
-      if (typeof form.requestSubmit === 'function') form.requestSubmit(submit);
-      else submit.click();
+    timezoneSelect.addEventListener('change', () => {
+      selectedSlot = ''; selectedDate = ''; slotInput.value = '';
+      calendarView.hidden = false; timeView.hidden = true;
+      loadSlots();
     });
+    populateTimezones();
 
     if (window.jQuery) {
       jQuery(document).on('submit_success', function (event) {
@@ -231,7 +267,7 @@
         stage = 'times';
         submitting.hidden = true;
         timeView.hidden = false;
-        confirmButton.disabled = false;
+        if (confirmButton) confirmButton.disabled = false;
       });
     }
   }
